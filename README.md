@@ -69,6 +69,36 @@ Non-English works. To check fidelity on your own language, run the comparison wi
 python3 examples/analyze_thinking.py --compare "Vì sao review code lại quan trọng?"
 ```
 
+## Using the API directly
+
+You do not need this client. Base URL `https://www.neuronpedia.org/api/nla`, three endpoints, auth header `x-api-key` (optional, add `-H "x-api-key: $KEY"` if you have one).
+
+```bash
+# 1. What can I use?
+curl -s https://www.neuronpedia.org/api/nla/sources
+
+# 2. Generate, and get the canonical tokenisation with it.
+curl -s -X POST https://www.neuronpedia.org/api/nla/completion \
+  -H 'Content-Type: application/json' \
+  -d '{"modelId":"gemma-3-27b-it","nlaSourceId":"kitft-l41",
+       "messages":[{"role":"user","content":"Why does code review matter?"}],
+       "completion_tokens":24}'
+
+# 3. Explain the activations at chosen token positions.
+curl -s -X POST https://www.neuronpedia.org/api/nla/explain \
+  -H 'Content-Type: application/json' \
+  -d '{"modelId":"gemma-3-27b-it","nlaSourceId":"kitft-l41",
+       "messages":[{"role":"user","content":"Why does code review matter?"}],
+       "positions":[4,7]}'
+```
+
+Four things that are easy to get wrong:
+
+- **Generate through `/completion`, not with your own copy of the model.** Its `tokens[].position` values are the ones `/explain` expects. Generate elsewhere and your positions silently point at the wrong tokens.
+- **`/explain` takes `messages` OR `text`, never both.** `text` must already be chat-templated; pass `full_text` (or Qwen's `text`) from `/completion` straight into it.
+- **At most 16 *new* positions per request.** Previously-explained positions for the same `(text, modelId, nlaSourceId, temperature)` are cached and exempt, but a cached request still costs you one call against the hourly limit.
+- **Read `results[].cosine_similarity`, `.mse`, and `.l2_norm`.** None are in the published spec, and without them you cannot tell a faithful description from a confabulated one. Compare `cosine_similarity` across models; `mse` is only comparable within one source, because each source has its own `norm`.
+
 ## Pros and cons
 
 **Good:** no infrastructure, you read a 70B model's internals from a laptop. No provider API keys. Readable output, unlike SAE feature ids. It ships its own error bars. Explanations are deterministic and cached (2.7s warm against 22.2s cold). Open weights throughout.
