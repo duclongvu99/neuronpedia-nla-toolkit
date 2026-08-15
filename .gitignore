@@ -1,0 +1,17 @@
+# Credentials — never commit. The client reads these paths automatically.
+.nla_creds
+*.creds
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Saved API responses / pinned transcripts from local experiments
+*.local.json
+scratch/
+
+.DS_Store
